@@ -21,7 +21,7 @@ import MediaPlayer
 open class VersaPlayerControls: View {
     
     /// VersaPlayer intance being controlled
-    public weak var handler: VersaPlayerView!
+    public weak var handler: VersaPlayerView?
     
     /// VersaPlayerControlsBehaviour being used to validate ui
     public var behaviour: VersaPlayerControlsBehaviour?
@@ -89,7 +89,7 @@ open class VersaPlayerControls: View {
     #if os(macOS)
     
     open override func touchesBegan(with event: NSEvent) {
-        behaviour.hide()
+        behaviour?.hide()
     }
     
     override open func viewDidMoveToSuperview() {
@@ -125,9 +125,10 @@ open class VersaPlayerControls: View {
     /// - Parameters:
     ///     - time: CMTime representation of the current playback time
     open func timeDidChange(toTime time: CMTime) {
+        guard let handler = handler, let player = handler.player else { return }
         currentTimeLabel?.update(toTime: time.seconds)
-        totalTimeLabel?.update(toTime: handler.player.endTime().seconds)
-        setSeekbarSlider(start: handler.player.startTime().seconds, end: handler.player.endTime().seconds, at: time.seconds)
+        totalTimeLabel?.update(toTime: player.endTime().seconds)
+        setSeekbarSlider(start: player.startTime().seconds, end: player.endTime().seconds, at: time.seconds)
         
         if !(handler.isSeeking || handler.isRewinding || handler.isForwarding) {
             behaviour?.update(with: time.seconds)
@@ -184,7 +185,7 @@ open class VersaPlayerControls: View {
         prepareSeekbar()
         seekbarSlider?.target = self
         seekbarSlider?.action = #selector(playheadChanged(with:))
-        preparePlaybackButton()
+        
         #else
         
         playPauseButton?.addTarget(self, action: #selector(togglePlayback), for: .touchUpInside)
@@ -205,7 +206,7 @@ open class VersaPlayerControls: View {
         if !AVPictureInPictureController.isPictureInPictureSupported() {
             pipButton?.alpha = 0.3
             pipButton?.isUserInteractionEnabled = false
-        } else {
+        }else {
             pipButton?.addTarget(self, action: #selector(togglePip), for: .touchUpInside)
         }
         
@@ -294,7 +295,8 @@ open class VersaPlayerControls: View {
     
     /// Prepare the seekbar values
     open func prepareSeekbar() {
-        setSeekbarSlider(start: handler.player.startTime().seconds, end: handler.player.endTime().seconds, at: handler.player.currentTime().seconds)
+        guard let player = handler?.player else { return }
+        setSeekbarSlider(start: player.startTime().seconds, end: player.endTime().seconds, at: player.currentTime().seconds)
     }
     
     /// Show buffering view
@@ -309,26 +311,29 @@ open class VersaPlayerControls: View {
     
     /// Skip forward (n) seconds in time
     @IBAction open func skipForward(sender: Any? = nil) {
-        let time = handler.player.currentTime() + CMTime(seconds: skipSize, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-        handler.player.seek(to: time)
+        guard let player = handler?.player else { return }
+        let time = player.currentTime() + CMTime(seconds: skipSize, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        player.seek(to: time)
     }
     
     /// Skip backward (n) seconds in time
     @IBAction open func skipBackward(sender: Any? = nil) {
-        let time = handler.player.currentTime() - CMTime(seconds: skipSize, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-        handler.player.seek(to: time)
+        guard let player = handler?.player else { return }
+        let time = player.currentTime() - CMTime(seconds: skipSize, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        player.seek(to: time)
     }
     
     /// End seeking
     @IBAction open func seekingEnd(sender: Any? = nil) {
-        handler.isSeeking = false
+        handler?.isSeeking = false
         if wasPlayingBeforeSeeking {
-            handler.play()
+            handler?.play()
         }
     }
     
     /// Start Seeking
     @IBAction open func seekingStart(sender: Any? = nil) {
+        guard let handler = handler else { return }
         wasPlayingBeforeSeeking = handler.isPlaying
         handler.isSeeking = true
         handler.pause()
@@ -342,12 +347,12 @@ open class VersaPlayerControls: View {
     /// - Parameters:
     ///     - sender: NSSlider that updated
     @IBAction open func playheadChanged(with sender: NSSlider) {
-        handler.pause()
+        guard let handler = handler else { return }
         handler.isSeeking = true
         let value = sender.doubleValue
         let time = CMTime(seconds: value, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-        handler.player.seek(to: time)
-        behaviour.update(with: time.seconds)
+        handler.player?.seek(to: time)
+        behaviour?.update(with: time.seconds)
     }
     
     #elseif os(iOS)
@@ -357,15 +362,17 @@ open class VersaPlayerControls: View {
     /// - Parameters:
     ///     - sender: UISlider that updated
     @IBAction open func playheadChanged(with sender: UISlider) {
+        guard let handler = handler else { return }
         handler.isSeeking = true
         let value = Double(sender.value)
         let time = CMTime(seconds: value, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-        handler.player.seek(to: time)
+        handler.player?.seek(to: time)
         behaviour?.update(with: time.seconds)
     }
     
     /// Toggle PIP mode
     @IBAction open func togglePip() {
+        guard let handler = handler else { return }
         handler.setNativePip(enabled: !handler.isPipModeEnabled)
     }
     
@@ -373,78 +380,74 @@ open class VersaPlayerControls: View {
     
     /// Toggle fullscreen mode
     @IBAction open func toggleFullscreen(sender: Any? = nil) {
+        guard let handler = handler else { return }
         fullscreenButton?.set(active: !handler.isFullscreenModeEnabled)
         handler.setFullscreen(enabled: !handler.isFullscreenModeEnabled)
     }
     
     /// Toggle playback
     @IBAction open func togglePlayback(sender: Any? = nil) {
+        guard let handler = handler, let player = handler.player else { return }
         if handler.isRewinding || handler.isForwarding {
-            handler.player.rate = 1
+            player.rate = 1
             playPauseButton?.set(active: true)
             return;
         }
         if handler.isPlaying {
             playPauseButton?.set(active: false)
             handler.pause()
-        } else {
-            if handler.playbackDelegate?.playbackShouldBegin(player: handler.player) ?? true {
+        }else {
+            if handler.playbackDelegate?.playbackShouldBegin(player: player) ?? true {
                 playPauseButton?.set(active: true)
                 handler.play()
             }
         }
     }
     
-    private func preparePlaybackButton(){
-        if handler.isPlaying {
-            playPauseButton?.set(active: true )
-        } else {
-            playPauseButton?.set(active: false)
-        }
-    }
-    
     /// Toggle rewind
     @IBAction open func rewindToggle(sender: Any? = nil) {
-        if handler.player.currentItem?.canPlayFastReverse ?? false {
+        guard let handler = handler, let player = handler.player else { return }
+        if player.currentItem?.canPlayFastReverse ?? false {
             if handler.isRewinding {
                 rewindButton?.set(active: false)
-                handler.player.rate = 1
+                player.rate = 1
                 if wasPlayingBeforeRewinding {
                     handler.play()
-                } else {
+                }else {
                     handler.pause()
                 }
-            } else {
+            }else {
                 playPauseButton?.set(active: false)
                 rewindButton?.set(active: true)
                 wasPlayingBeforeRewinding = handler.isPlaying
                 if !handler.isPlaying {
                     handler.play()
                 }
-                handler.player.rate = -1
+                player.rate = -1
             }
         }
     }
     
     /// Forward toggle
     @IBAction open func forwardToggle(sender: Any? = nil) {
-        if handler.player.currentItem?.canPlayFastForward ?? false {
+        guard let handler = handler, let player = handler.player else { return }
+        if player.currentItem?.canPlayFastForward ?? false {
             if handler.isForwarding {
                 forwardButton?.set(active: false)
-                handler.player.rate = 1
+                player.rate = 1
                 if wasPlayingBeforeForwarding {
                     handler.play()
-                } else {
+                }else {
                     handler.pause()
                 }
-            } else {
+            }else {
                 playPauseButton?.set(active: false)
                 forwardButton?.set(active: true)
                 wasPlayingBeforeForwarding = handler.isPlaying
                 if !handler.isPlaying {
                     handler.play()
                 }
-                handler.player.rate = 2
+                player.rate = 2
             }
         }
     }

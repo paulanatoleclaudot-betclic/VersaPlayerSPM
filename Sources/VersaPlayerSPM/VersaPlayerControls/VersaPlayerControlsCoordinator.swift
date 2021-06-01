@@ -17,13 +17,13 @@ import AVFoundation
 open class VersaPlayerControlsCoordinator: View, VersaPlayerGestureRecieverViewDelegate {
 
     /// VersaPlayer instance being used
-    weak var player: VersaPlayerView!
+    weak var player: VersaPlayerView?
     
     /// VersaPlayerControls instance being used
-    weak public var controls: VersaPlayerControls!
+    weak public var controls: VersaPlayerControls?
     
     /// VersaPlayerGestureRecieverView instance being used
-    public var gestureReciever: VersaPlayerGestureRecieverView!
+    public var gestureReciever: VersaPlayerGestureRecieverView?
 
     deinit {
         
@@ -56,20 +56,24 @@ open class VersaPlayerControlsCoordinator: View, VersaPlayerGestureRecieverViewD
     #endif
     
     public func configureView() {
-        if controls != nil {
-            addSubview(controls)
+        if let h = superview as? VersaPlayerView {
+            player = h
+            if let controls = controls {
+                addSubview(controls)
+            }
+            if gestureReciever == nil {
+                let gestureReciever = VersaPlayerGestureRecieverView()
+                gestureReciever.delegate = self
+                #if os(macOS)
+                addSubview(gestureReciever, positioned: NSWindow.OrderingMode.below, relativeTo: nil)
+                #else
+                addSubview(gestureReciever)
+                sendSubviewToBack(gestureReciever)
+                #endif
+                self.gestureReciever = gestureReciever
+            }
+            stretchToEdges()
         }
-        if gestureReciever == nil {
-            gestureReciever = VersaPlayerGestureRecieverView()
-            gestureReciever.delegate = self
-            #if os(macOS)
-            addSubview(gestureReciever, positioned: NSWindow.OrderingMode.below, relativeTo: nil)
-            #else
-            addSubview(gestureReciever)
-            sendSubviewToBack(gestureReciever)
-            #endif
-        }
-        stretchToEdges()
     }
     
     public func stretchToEdges() {
@@ -95,10 +99,11 @@ open class VersaPlayerControlsCoordinator: View, VersaPlayerGestureRecieverViewD
     /// - Parameters:
     ///     - point: CGPoint at which tap was recognized
     open func didTap(at point: CGPoint) {
-        if controls.behaviour?.showingControls ?? false {
-            controls.behaviour?.hide()
-        } else {
-            controls.behaviour?.show()
+        guard let behaviour = controls?.behaviour else { return }
+        if behaviour.showingControls {
+            behaviour.hide()
+        }else {
+            behaviour.show()
         }
     }
     
@@ -107,10 +112,11 @@ open class VersaPlayerControlsCoordinator: View, VersaPlayerGestureRecieverViewD
     /// - Parameters:
     ///     - point: CGPoint at which tap was recognized
     open func didDoubleTap(at point: CGPoint) {
-        if player.renderingView.playerLayer.videoGravity == AVLayerVideoGravity.resizeAspect {
-            player.renderingView.playerLayer.videoGravity = AVLayerVideoGravity.resizeAspectFill
-        } else {
-            player.renderingView.playerLayer.videoGravity = AVLayerVideoGravity.resizeAspect
+        guard let playerLayer = player?.renderingView.playerLayer else { return }
+        if playerLayer.videoGravity == AVLayerVideoGravity.resizeAspect {
+            playerLayer.videoGravity = AVLayerVideoGravity.resizeAspectFill
+        }else {
+            playerLayer.videoGravity = AVLayerVideoGravity.resizeAspect
         }
     }
     
