@@ -16,10 +16,6 @@ let package = Package(
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "VersaPlayerSPM",
-            dependencies: [],
-            resources: [
-                .process("Resources/Artboard.png"),
-                .copy("Resources/iPhone.png")
-            ]),
+            dependencies: []),
     ]
 )
