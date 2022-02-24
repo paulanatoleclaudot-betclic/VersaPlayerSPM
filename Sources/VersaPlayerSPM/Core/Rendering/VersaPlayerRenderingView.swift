@@ -21,12 +21,12 @@ open class VersaPlayerRenderingView: View {
   }
   #endif
 
-  public var playerLayer: AVPlayerLayer {
-      return layer as! AVPlayerLayer
+  public var playerLayer: AVPlayerLayer? {
+      return layer as? AVPlayerLayer
   }
 
   /// VersaPlayer instance being rendered by renderingLayer
-  public weak var player: VersaPlayerView!
+  public weak var player: VersaPlayerView?
 
   deinit {
     
@@ -38,7 +38,7 @@ open class VersaPlayerRenderingView: View {
   ///     - player: VersaPlayer instance to render.
   public init(with player: VersaPlayerView) {
     super.init(frame: CGRect.zero)
-    playerLayer.player = player.player
+    playerLayer?.player = player.player
   }
 
   required public init?(coder aDecoder: NSCoder) {

@@ -31,20 +31,21 @@ public protocol PIPProtocol {}
 open class VersaPlayerView: View, PIPProtocol {
     
     deinit {
-        player.replaceCurrentItem(with: nil)
+        player?.replaceCurrentItem(with: nil)
+        player = nil
     }
 
     /// VersaPlayer extension dictionary
     public var extensions: [String: VersaPlayerExtension] = [:]
     
     /// AVPlayer used in VersaPlayer implementation
-    public var player: VersaPlayer!
+    public var player: VersaPlayer?
     
     /// VersaPlayerControls instance being used to display controls
     public var controls: VersaPlayerControls? = nil
     
     /// VersaPlayerRenderingView instance
-    public var renderingView: VersaPlayerRenderingView!
+    public var renderingView: VersaPlayerRenderingView?
     
     /// VersaPlayerPlaybackDelegate instance
     public weak var playbackDelegate: VersaPlayerPlaybackDelegate? = nil
@@ -86,11 +87,13 @@ open class VersaPlayerView: View, PIPProtocol {
     
     /// Whether Player is Fast Forwarding
     public var isForwarding: Bool {
+        guard let player = player else { return false }
         return player.rate > 1
     }
     
     /// Whether Player is Rewinding
     public var isRewinding: Bool {
+        guard let player = player else { return false }
         return player.rate < 0
     }
     
@@ -156,9 +159,10 @@ open class VersaPlayerView: View, PIPProtocol {
     open func prepare() {
         ready = true
         player = VersaPlayer()
-        player.handler = self
-        player.preparePlayerPlaybackDelegate()
-        renderingView = VersaPlayerRenderingView(with: self)
+        player?.handler = self
+        player?.preparePlayerPlaybackDelegate()
+        let renderingView = VersaPlayerRenderingView(with: self)
+        self.renderingView = renderingView
         layout(view: renderingView, into: self)
     }
     
@@ -185,8 +189,8 @@ open class VersaPlayerView: View, PIPProtocol {
     /// - Parameters:
     ///     - enabled: Whether or not to enable
     open func setNativePip(enabled: Bool) {
-        if pipController == nil && renderingView != nil {
-            let controller = AVPictureInPictureController(playerLayer: renderingView!.playerLayer)
+        if pipController == nil && renderingView != nil, let playerLayer = renderingView?.playerLayer {
+            let controller = AVPictureInPictureController(playerLayer: playerLayer)
             controller?.delegate = self
             pipController = controller
         }
@@ -238,7 +242,7 @@ open class VersaPlayerView: View, PIPProtocol {
             prepare()
         }
         
-        player.replaceCurrentItem(with: item)
+        player?.replaceCurrentItem(with: item)
         if autoplay && item?.error == nil {
             play()
         }
@@ -246,6 +250,7 @@ open class VersaPlayerView: View, PIPProtocol {
     
     /// Play
     @IBAction open func play(sender: Any? = nil) {
+        guard let player = player else { return }
         if playbackDelegate?.playbackShouldBegin(player: player) ?? true {
             player.play()
             controls?.playPauseButton?.set(active: true)
@@ -255,7 +260,7 @@ open class VersaPlayerView: View, PIPProtocol {
     
     /// Pause
     @IBAction open func pause(sender: Any? = nil) {
-        player.pause()
+        player?.pause()
         controls?.playPauseButton?.set(active: false)
         isPlaying = false
     }
